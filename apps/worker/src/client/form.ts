@@ -884,8 +884,8 @@ function attachXAutocomplete(): void {
       suggestList!.hidden = true;
       if (hint) {
         hint.innerHTML = replierPool.length === 0
-          ? '<span style="color:#e53e3e">⏳ まだリアクションがありません</span><br><span style="font-size:11px;color:#888">ポストにいいね・リプライ・リポストしてから再度お試しください</span>'
-          : '<span style="color:#e53e3e">🔍 一致するユーザーが見つかりません</span><br><span style="font-size:11px;color:#888">X IDまたは名前をもう少し入力してみてください</span>';
+          ? '<span style="color:#e53e3e">⏳ まだリアクションがありません</span><br><span style="font-size:11px;color:#888">ポストにリポスト＆フォローしてから再度お試しください</span>'
+          : '<span style="color:#e53e3e">🔍 一致するユーザーが見つかりません</span><br><span style="font-size:11px;color:#888">見つからない場合は、条件を満たした後に1〜2分ほど待ってからこのページを開き直してください</span>';
         hint.hidden = false;
       }
       return;

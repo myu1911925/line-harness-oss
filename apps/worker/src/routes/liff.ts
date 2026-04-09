@@ -48,6 +48,7 @@ liffRoutes.get('/auth/line', async (c) => {
   const utmCampaign = c.req.query('utm_campaign') || '';
   let accountParam = c.req.query('account') || '';
   const uidParam = c.req.query('uid') || ''; // existing user UUID for cross-account linking
+  const igParam = c.req.query('ig') || ''; // IG Harness IGSID for cross-platform linking
   let poolAccount = ''; // pool's channel_id — passed via state only, not accountParam
   const baseUrl = new URL(c.req.url).origin;
 
@@ -127,6 +128,7 @@ liffRoutes.get('/auth/line', async (c) => {
   if (gateParam) liffParams.set('gate', gateParam);
   const xhParam2 = c.req.query('xh') || '';
   if (xhParam2) liffParams.set('xh', xhParam2);
+  if (igParam) liffParams.set('ig', igParam);
   if (redirect) liffParams.set('redirect', redirect);
   if (gclid) liffParams.set('gclid', gclid);
   if (fbclid) liffParams.set('fbclid', fbclid);
@@ -145,7 +147,7 @@ liffRoutes.get('/auth/line', async (c) => {
   // can verify against the correct gate via the correct X Harness instance.
   // Without these, the form falls back to the gateId baked into the form's
   // onSubmitWebhookUrl (which is stale when a form is reused across campaigns).
-  const state = JSON.stringify({ ref, redirect, form: formId, gate: gateParam, xh: xhParam2, gclid, fbclid, twclid, ttclid, utmSource, utmMedium, utmCampaign, account: accountParam || poolAccount, uid: uidParam });
+  const state = JSON.stringify({ ref, redirect, form: formId, gate: gateParam, xh: xhParam2, gclid, fbclid, twclid, ttclid, utmSource, utmMedium, utmCampaign, account: accountParam || poolAccount, uid: uidParam, ig: igParam });
   const encodedState = btoa(state);
   const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
   loginUrl.searchParams.set('response_type', 'code');
@@ -168,6 +170,7 @@ liffRoutes.get('/auth/line', async (c) => {
   if (xhParam2) qrParams.set('xh', xhParam2);
   if (uidParam) qrParams.set('uid', uidParam);
   if (accountParam) qrParams.set('account', accountParam);
+  if (igParam) qrParams.set('ig', igParam);
   const qrUrl = qrParams.toString() ? `${liffUrl}?${qrParams.toString()}` : liffUrl;
 
   // Mobile: redirect to LIFF URL (opens LINE app directly)
@@ -243,6 +246,7 @@ liffRoutes.get('/auth/oauth', async (c) => {
   const utmCampaign = c.req.query('utm_campaign') || '';
   const accountParam = c.req.query('account') || '';
   const uidParam = c.req.query('uid') || '';
+  const igParam = c.req.query('ig') || '';
   let poolAccount = '';
   const baseUrl = new URL(c.req.url).origin;
 
@@ -278,7 +282,7 @@ liffRoutes.get('/auth/oauth', async (c) => {
     ref, redirect, form: formId, gate: gateParam, xh: xhParam,
     gclid, fbclid, twclid, ttclid,
     utmSource, utmMedium, utmCampaign,
-    account: accountParam || poolAccount, uid: uidParam,
+    account: accountParam || poolAccount, uid: uidParam, ig: igParam,
   });
   const encodedState = btoa(state);
   const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
@@ -317,6 +321,7 @@ liffRoutes.get('/auth/callback', async (c) => {
   let utmCampaign = '';
   let accountParam = '';
   let uidParam = '';
+  let igParam = '';
   try {
     const parsed = JSON.parse(atob(stateParam));
     ref = parsed.ref || '';
@@ -333,6 +338,7 @@ liffRoutes.get('/auth/callback', async (c) => {
     utmCampaign = parsed.utmCampaign || '';
     accountParam = parsed.account || '';
     uidParam = parsed.uid || '';
+    igParam = parsed.ig || '';
   } catch {
     // ignore
   }
@@ -429,6 +435,37 @@ liffRoutes.get('/auth/callback', async (c) => {
       pictureUrl,
       statusMessage: null,
     });
+
+    // IG cross-platform UUID linkage
+    // If the tracked link carried ?ig=<IGSID>, persist it on our side and
+    // notify IG Harness so both DBs hold a bidirectional reference.
+    if (igParam) {
+      try {
+        await db
+          .prepare('UPDATE friends SET ig_igsid = ? WHERE id = ? AND (ig_igsid IS NULL OR ig_igsid = ?)')
+          .bind(igParam, friend.id, igParam)
+          .run();
+      } catch (err) {
+        console.error('Failed to write friends.ig_igsid:', err);
+      }
+      // Best-effort notify IG Harness (don't block the user)
+      if (c.env.IG_HARNESS_URL && c.env.IG_HARNESS_LINK_SECRET) {
+        c.executionCtx.waitUntil(
+          fetch(`${c.env.IG_HARNESS_URL}/api/followers/link-line`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-LINE-HARNESS-LINK-SECRET': c.env.IG_HARNESS_LINK_SECRET,
+            },
+            body: JSON.stringify({ igsid: igParam, line_friend_uuid: friend.id }),
+          }).then(async (res) => {
+            if (!res.ok) {
+              console.error('IG Harness link-line failed:', res.status, await res.text().catch(() => ''));
+            }
+          }).catch((err) => console.error('IG Harness link-line error:', err))
+        );
+      }
+    }
 
     // Create or find user → link
     let userId: string | null = null;

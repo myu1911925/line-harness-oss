@@ -58,6 +58,8 @@ export type Env = {
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
     X_HARNESS_URL?: string;  // Optional: X Harness API URL for account linking
+    IG_HARNESS_URL?: string;  // Optional: IG Harness API URL for cross-platform linking
+    IG_HARNESS_LINK_SECRET?: string;  // Shared secret for IG Harness link-line webhook
   };
   Variables: {
     staff: { id: string; name: string; role: 'owner' | 'admin' | 'staff' };
@@ -162,6 +164,8 @@ app.get('/r/:ref', async (c) => {
   if (gate) liffParams.set('gate', gate);
   const xh = c.req.query('xh');
   if (xh) liffParams.set('xh', xh);
+  const ig = c.req.query('ig');
+  if (ig) liffParams.set('ig', ig);
   const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
 
   // Build /auth/oauth fallback URL — forces OAuth flow without X detection,
@@ -173,6 +177,7 @@ app.get('/r/:ref', async (c) => {
   if (poolParam) authParams.set('pool', poolParam);
   if (gate) authParams.set('gate', gate);
   if (xh) authParams.set('xh', xh);
+  if (ig) authParams.set('ig', ig);
   const authFallback = `${baseUrl}/auth/oauth?${authParams.toString()}`;
 
   const ua = (c.req.header('user-agent') || '').toLowerCase();
