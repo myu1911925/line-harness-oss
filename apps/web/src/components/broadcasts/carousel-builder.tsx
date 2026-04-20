@@ -17,7 +17,7 @@ interface CarouselBuilderProps {
 
 const defaultCampaign = () => {
   const d = new Date()
-  return `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  return `line${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 }
 
 const emptyBubble = (): BubbleData => ({
@@ -118,21 +118,41 @@ export default function CarouselBuilder({ onChange }: CarouselBuilderProps) {
     setBubbles((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const copyBubble = (index: number) => {
+    if (bubbles.length >= 10) return
+    setBubbles((prev) => [
+      ...prev.slice(0, index + 1),
+      { ...prev[index] },
+      ...prev.slice(index + 1),
+    ])
+  }
+
   return (
     <div className="space-y-4">
       {bubbles.map((bubble, index) => (
         <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-gray-600">コマ {index + 1}</span>
-            {bubbles.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeBubble(index)}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                削除
-              </button>
-            )}
+            <div className="flex gap-2">
+              {bubbles.length < 10 && (
+                <button
+                  type="button"
+                  onClick={() => copyBubble(index)}
+                  className="text-xs text-blue-500 hover:text-blue-700"
+                >
+                  コピー
+                </button>
+              )}
+              {bubbles.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeBubble(index)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  削除
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
