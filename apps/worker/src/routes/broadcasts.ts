@@ -5,13 +5,15 @@ import {
   createBroadcast,
   updateBroadcast,
   deleteBroadcast,
+  getFriendsByTag,
+  getLineAccountById,
+  jstNow,
 } from '@line-crm/db';
 import type { Broadcast as DbBroadcast, BroadcastMessageType, BroadcastTargetType } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend, buildMessage } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
-import { getLineAccountById } from '@line-crm/db';
 import type { Env } from '../index.js';
 
 const broadcasts = new Hono<Env>();
@@ -59,7 +61,15 @@ broadcasts.get('/api/broadcasts/:id', async (c) => {
       return c.json({ success: false, error: 'Broadcast not found' }, 404);
     }
 
-    return c.json({ success: true, data: serializeBroadcast(broadcast) });
+    const serialized = serializeBroadcast(broadcast);
+
+    // タグ配信でまだ送信前の場合、実際の対象人数を計算して返す
+    if (broadcast.target_type === 'tag' && broadcast.target_tag_id && broadcast.total_count === 0) {
+      const friends = await getFriendsByTag(c.env.DB, broadcast.target_tag_id);
+      serialized.totalCount = friends.filter(f => f.is_following).length;
+    }
+
+    return c.json({ success: true, data: serialized });
   } catch (err) {
     console.error('GET /api/broadcasts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -78,7 +88,6 @@ broadcasts.get('/api/broadcasts/:id/target-count', async (c) => {
     }
 
     if (broadcast.target_type === 'tag' && broadcast.target_tag_id) {
-      const { getFriendsByTag } = await import('@line-crm/db');
       const friends = await getFriendsByTag(c.env.DB, broadcast.target_tag_id);
       const count = friends.filter(f => f.is_following).length;
       return c.json({ success: true, count });
@@ -220,7 +229,6 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
 
     // target_type='tag' で対象が多い場合はキュー方式
     if (existing.target_type === 'tag' && existing.target_tag_id) {
-      const { getFriendsByTag } = await import('@line-crm/db');
       const friends = await getFriendsByTag(c.env.DB, existing.target_tag_id);
       const followingCount = friends.filter(f => f.is_following).length;
 
@@ -239,7 +247,6 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
     let accessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
     const broadcastAccountId = (existing as unknown as Record<string, unknown>).line_account_id;
     if (broadcastAccountId) {
-      const { getLineAccountById } = await import('@line-crm/db');
       const account = await getLineAccountById(c.env.DB, broadcastAccountId as string);
       if (account) accessToken = account.channel_access_token;
     }
@@ -347,7 +354,6 @@ broadcasts.post('/api/broadcasts/:id/fetch-insight', async (c) => {
     let accessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
     const accountId = rawBroadcast?.line_account_id || null;
     if (accountId) {
-      const { getLineAccountById } = await import('@line-crm/db');
       const account = await getLineAccountById(c.env.DB, accountId);
       if (account) accessToken = account.channel_access_token;
     }
@@ -383,7 +389,6 @@ broadcasts.post('/api/broadcasts/:id/fetch-insight', async (c) => {
 
     // Upsert insight
     const insightId = crypto.randomUUID();
-    const { jstNow } = await import('@line-crm/db');
     const now = jstNow();
     await c.env.DB.prepare(
       `INSERT INTO broadcast_insights (id, broadcast_id, delivered, unique_impression, unique_click, unique_media_played, open_rate, click_rate, raw_response, status, fetched_at, created_at)

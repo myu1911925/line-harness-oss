@@ -53,15 +53,6 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
 
   useEffect(() => { load() }, [load])
 
-  // ドラフトは total_count=0 のため、送信と同じロジックで対象人数を取得
-  useEffect(() => {
-    if (!broadcast) return
-    if (broadcast.totalCount > 0) return
-    api.broadcasts.getTargetCount(id).then(res => {
-      if (res.success && res.count != null) setTargetCount(res.count)
-    }).catch(() => {})
-  }, [broadcast, id])
-
   // Poll progress while sending
   useEffect(() => {
     if (broadcast?.status !== 'sending') return
