@@ -10,6 +10,7 @@ import TestSendSection from '@/components/broadcasts/test-send-section'
 import ProgressBar from '@/components/broadcasts/progress-bar'
 import SendConfirmDialog from '@/components/broadcasts/send-confirm-dialog'
 import SegmentBuilder from '@/components/broadcasts/segment-builder'
+import BroadcastForm from '@/components/broadcasts/broadcast-form'
 import type { Tag } from '@line-crm/shared'
 
 interface BroadcastDetailProps {
@@ -29,6 +30,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
   const [targetCount, setTargetCount] = useState<number | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
   const [showSegmentBuilder, setShowSegmentBuilder] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -124,17 +126,51 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
       <Header
         title={broadcast.title}
         action={
-          <button
-            onClick={() => router.push('/broadcasts', { scroll: false })}
-            className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
-          >
-            ← 一覧に戻る
-          </button>
+          <div className="flex gap-2 items-center">
+            {broadcast.status === 'draft' && !editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="px-3 py-2 text-sm font-medium text-white rounded-lg"
+                style={{ backgroundColor: '#C97878' }}
+              >
+                内容を編集
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/broadcasts', { scroll: false })}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
+            >
+              ← 一覧に戻る
+            </button>
+          </div>
         }
       />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
+      )}
+
+      {/* Edit form for drafts */}
+      {broadcast.status === 'draft' && editing && (
+        <div className="mb-4">
+          <BroadcastForm
+            tags={tags}
+            editId={id}
+            initialValues={{
+              title: broadcast.title,
+              messageType: broadcast.messageType,
+              messageContent: broadcast.messageContent,
+              targetType: broadcast.targetType,
+              targetTagId: broadcast.targetTagId ?? '',
+              scheduledAt: broadcast.scheduledAt
+                ? new Date(broadcast.scheduledAt).toISOString().slice(0, 16)
+                : '',
+              sendNow: !broadcast.scheduledAt,
+            }}
+            onSuccess={() => { setEditing(false); load() }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">

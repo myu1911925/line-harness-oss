@@ -11,6 +11,8 @@ interface BroadcastFormProps {
   tags: Tag[]
   onSuccess: () => void
   onCancel: () => void
+  editId?: string
+  initialValues?: Partial<FormState>
 }
 
 const messageTypeLabels: Record<ApiBroadcast['messageType'], string> = {
@@ -29,7 +31,7 @@ interface FormState {
   sendNow: boolean
 }
 
-export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFormProps) {
+export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initialValues }: BroadcastFormProps) {
   const { selectedAccountId } = useAccount()
   const [form, setForm] = useState<FormState>({
     title: '',
@@ -39,6 +41,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
     targetTagId: '',
     scheduledAt: '',
     sendNow: true,
+    ...initialValues,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -58,24 +61,25 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
     setSaving(true)
     setError('')
     try {
-      const res = await api.broadcasts.create({
+      const payload = {
         title: form.title,
         messageType: form.messageType,
         messageContent: form.messageContent,
         targetType: form.targetType,
         targetTagId: form.targetType === 'tag' ? form.targetTagId || null : null,
-        status: 'draft',
+        status: 'draft' as const,
         lineAccountId: selectedAccountId || null,
-        // datetime-local returns YYYY-MM-DDTHH:mm in JST wall-clock time
-        // Append +09:00 so new Date() parses correctly for epoch comparisons
         scheduledAt: form.sendNow || !form.scheduledAt
           ? null
           : form.scheduledAt + ':00.000+09:00',
-      })
+      }
+      const res = editId
+        ? await api.broadcasts.update(editId, payload)
+        : await api.broadcasts.create(payload)
       if (res.success) {
         onSuccess()
       } else {
-        setError(res.error)
+        setError(res.error ?? '保存に失敗しました')
       }
     } catch {
       setError('作成に失敗しました')
@@ -86,7 +90,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-      <h2 className="text-sm font-semibold text-gray-800 mb-5">新規配信を作成</h2>
+      <h2 className="text-sm font-semibold text-gray-800 mb-5">{editId ? '配信を編集' : '新規配信を作成'}</h2>
 
       <div className="space-y-4 max-w-lg">
         {/* Title */}
@@ -331,7 +335,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
             style={{ backgroundColor: '#06C755' }}
           >
-            {saving ? '作成中...' : '作成'}
+            {saving ? '保存中...' : editId ? '保存' : '作成'}
           </button>
           <button
             onClick={onCancel}
