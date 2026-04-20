@@ -5,6 +5,7 @@ import type { Tag } from '@line-crm/shared'
 import { api, type ApiBroadcast } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
 import FlexPreviewComponent from '@/components/flex-preview'
+import CarouselBuilder from '@/components/broadcasts/carousel-builder'
 
 interface BroadcastFormProps {
   tags: Tag[]
@@ -41,6 +42,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [flexMode, setFlexMode] = useState<'builder' | 'raw'>('builder')
 
   const handleSave = async () => {
     if (!form.title.trim()) { setError('配信タイトルを入力してください'); return }
@@ -168,30 +170,75 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             )
           })()}
 
-          <textarea
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
-            rows={form.messageType === 'flex' ? 8 : form.messageType === 'image' ? 3 : 4}
-            placeholder={
-              form.messageType === 'text'
-                ? '配信するメッセージを入力...'
-                : form.messageType === 'image'
-                ? '{"originalContentUrl":"...","previewImageUrl":"..."}'
-                : '{"type":"bubble","body":{...}}'
-            }
-            value={form.messageContent}
-            onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
-            style={{ fontFamily: form.messageType !== 'text' ? 'monospace' : 'inherit' }}
-          />
-          {form.messageType === 'image' && (
-            <p className="text-xs text-gray-400 mt-1">上のURLフォームか、直接JSONを編集できます</p>
-          )}
-          {form.messageType === 'flex' && form.messageContent && (() => {
-            try { JSON.parse(form.messageContent); return true } catch { return false }
-          })() && (
-            <div className="mt-3">
-              <p className="text-xs font-medium text-gray-500 mb-2">プレビュー</p>
-              <FlexPreviewComponent content={form.messageContent} maxWidth={300} />
-            </div>
+          {form.messageType === 'flex' ? (
+            <>
+              {/* Builder / Raw toggle */}
+              <div className="flex gap-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setFlexMode('builder')}
+                  className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+                    flexMode === 'builder'
+                      ? 'border-green-500 text-green-700 bg-green-50'
+                      : 'border-gray-300 text-gray-500 bg-white hover:border-gray-400'
+                  }`}
+                >
+                  カルーセルビルダー
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlexMode('raw')}
+                  className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+                    flexMode === 'raw'
+                      ? 'border-green-500 text-green-700 bg-green-50'
+                      : 'border-gray-300 text-gray-500 bg-white hover:border-gray-400'
+                  }`}
+                >
+                  JSON直接入力
+                </button>
+              </div>
+
+              {flexMode === 'builder' ? (
+                <CarouselBuilder
+                  onChange={(json) => setForm((f) => ({ ...f, messageContent: json }))}
+                />
+              ) : (
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y font-mono"
+                  rows={8}
+                  placeholder='{"type":"bubble","body":{...}}'
+                  value={form.messageContent}
+                  onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
+                />
+              )}
+
+              {form.messageContent && (() => {
+                try { JSON.parse(form.messageContent); return true } catch { return false }
+              })() && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-gray-500 mb-2">プレビュー</p>
+                  <FlexPreviewComponent content={form.messageContent} maxWidth={300} />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <textarea
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                rows={form.messageType === 'image' ? 3 : 4}
+                placeholder={
+                  form.messageType === 'text'
+                    ? '配信するメッセージを入力...'
+                    : '{"originalContentUrl":"...","previewImageUrl":"..."}'
+                }
+                value={form.messageContent}
+                onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
+                style={{ fontFamily: form.messageType !== 'text' ? 'monospace' : 'inherit' }}
+              />
+              {form.messageType === 'image' && (
+                <p className="text-xs text-gray-400 mt-1">上のURLフォームか、直接JSONを編集できます</p>
+              )}
+            </>
           )}
         </div>
 
