@@ -7,7 +7,7 @@ workers_dev = true
 # デフォルト = テスト環境 (noda@)
 # 使い方: npx wrangler deploy
 # ═══════════════════════════════════════════════════════════════
-account_id = "YOUR_DEV_ACCOUNT_ID"
+account_id = "e484db8d62542849a7788ff78c331f66"
 
 [assets]
 directory = "dist/client"
@@ -16,7 +16,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "line-harness"
-database_id = "YOUR_DEV_D1_DATABASE_ID"
+database_id = "65a7e4c3-fe64-43dc-9c63-fb21d7ef8a95"
 
 [[r2_buckets]]
 binding = "IMAGES"
@@ -31,7 +31,7 @@ crons = ["*/5 * * * *"]
 # D1:     npx wrangler d1 execute line-crm --env production --remote --file ...
 # ═══════════════════════════════════════════════════════════════
 [env.production]
-account_id = "YOUR_ACCOUNT_ID"
+account_id = "e484db8d62542849a7788ff78c331f66"
 
 [env.production.assets]
 directory = "dist/client"
@@ -40,7 +40,7 @@ binding = "ASSETS"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "line-crm"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "65a7e4c3-fe64-43dc-9c63-fb21d7ef8a95"
 
 [[env.production.r2_buckets]]
 binding = "IMAGES"
