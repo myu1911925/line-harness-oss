@@ -9,7 +9,6 @@ import FlexPreviewComponent from '@/components/flex-preview'
 import TestSendSection from '@/components/broadcasts/test-send-section'
 import ProgressBar from '@/components/broadcasts/progress-bar'
 import SendConfirmDialog from '@/components/broadcasts/send-confirm-dialog'
-import SegmentBuilder from '@/components/broadcasts/segment-builder'
 import BroadcastForm from '@/components/broadcasts/broadcast-form'
 import type { Tag } from '@line-crm/shared'
 
@@ -29,9 +28,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
   const [insight, setInsight] = useState<BroadcastInsight | null>(null)
   const [targetCount, setTargetCount] = useState<number | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
-  const [showSegmentBuilder, setShowSegmentBuilder] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [pendingSegment, setPendingSegment] = useState<{ operator: string; rules: unknown[] } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -104,11 +101,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
     setShowConfirm(false)
     setSending(true)
     try {
-      if (pendingSegment) {
-        await api.broadcasts.sendSegment(id, pendingSegment)
-      } else {
-        await api.broadcasts.send(id)
-      }
+      await api.broadcasts.send(id)
       load()
     } catch {
       setError('送信に失敗しました')
@@ -224,11 +217,9 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
             <div className="flex justify-between">
               <dt className="text-gray-500">対象</dt>
               <dd className="text-gray-900">
-                {pendingSegment
-                  ? `セグメント条件`
-                  : broadcast.targetType === 'all'
+                {broadcast.targetType === 'all'
                   ? '全員'
-                  : `タグ: ${tags.find(t => t.id === broadcast.targetTagId)?.name ?? broadcast.targetTagId ?? '-'}`}
+                  : `タグ: ${tags.find(t => t.id === broadcast.targetTagId)?.name ?? '-'}`}
                 {targetCount != null && <span className="ml-1 text-gray-500">({targetCount.toLocaleString('ja-JP')}人)</span>}
               </dd>
             </div>
@@ -254,31 +245,6 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
           </dl>
         </div>
       </div>
-
-      {/* Segment Builder */}
-      {broadcast.status === 'draft' && (
-        <div className="mb-4">
-          {!showSegmentBuilder ? (
-            <button
-              onClick={() => setShowSegmentBuilder(true)}
-              className="text-xs text-blue-500 hover:text-blue-700"
-            >
-              セグメント条件を編集
-            </button>
-          ) : (
-            <SegmentBuilder
-              tags={tags}
-              accountId={accountId}
-              onApply={(conditions, count) => {
-                setPendingSegment(conditions as { operator: string; rules: unknown[] })
-                setTargetCount(count)
-                setShowSegmentBuilder(false)
-              }}
-              onCancel={() => setShowSegmentBuilder(false)}
-            />
-          )}
-        </div>
-      )}
 
       {/* Test Send */}
       {broadcast.status === 'draft' && accountId && (
