@@ -18,7 +18,7 @@ interface SegmentBuilderProps {
   tags: Tag[]
   accountId: string | null
   initialConditions?: SegmentCondition | null
-  onApply: (conditions: SegmentCondition) => void
+  onApply: (conditions: SegmentCondition, count: number) => void
   onCancel: () => void
 }
 
@@ -149,7 +149,7 @@ export default function SegmentBuilder({ tags, accountId, initialConditions, onA
 
       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
         <button
-          onClick={() => onApply({ operator, rules })}
+          onClick={() => onApply({ operator, rules }, count ?? 0)}
           className="px-3 py-1.5 min-h-[44px] text-xs font-medium text-white rounded-md"
           style={{ backgroundColor: '#06C755' }}
         >

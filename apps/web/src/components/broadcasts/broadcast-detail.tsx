@@ -31,6 +31,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
   const [tags, setTags] = useState<Tag[]>([])
   const [showSegmentBuilder, setShowSegmentBuilder] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [pendingSegment, setPendingSegment] = useState<{ operator: string; rules: unknown[] } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -103,7 +104,11 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
     setShowConfirm(false)
     setSending(true)
     try {
-      await api.broadcasts.send(id)
+      if (pendingSegment) {
+        await api.broadcasts.sendSegment(id, pendingSegment)
+      } else {
+        await api.broadcasts.send(id)
+      }
       load()
     } catch {
       setError('送信に失敗しました')
@@ -219,7 +224,11 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
             <div className="flex justify-between">
               <dt className="text-gray-500">対象</dt>
               <dd className="text-gray-900">
-                {broadcast.targetType === 'all' ? '全員' : `タグ: ${broadcast.targetTagId ?? '-'}`}
+                {pendingSegment
+                  ? `セグメント条件`
+                  : broadcast.targetType === 'all'
+                  ? '全員'
+                  : `タグ: ${tags.find(t => t.id === broadcast.targetTagId)?.name ?? broadcast.targetTagId ?? '-'}`}
                 {targetCount != null && <span className="ml-1 text-gray-500">({targetCount.toLocaleString('ja-JP')}人)</span>}
               </dd>
             </div>
@@ -260,10 +269,10 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
             <SegmentBuilder
               tags={tags}
               accountId={accountId}
-              onApply={async (conditions) => {
-                await api.broadcasts.update(id, { segmentConditions: JSON.stringify(conditions) } as unknown as Parameters<typeof api.broadcasts.update>[1])
+              onApply={(conditions, count) => {
+                setPendingSegment(conditions as { operator: string; rules: unknown[] })
+                setTargetCount(count)
                 setShowSegmentBuilder(false)
-                load()
               }}
               onCancel={() => setShowSegmentBuilder(false)}
             />
