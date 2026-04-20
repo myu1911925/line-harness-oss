@@ -210,6 +210,8 @@ export const api = {
       fetchApi<{ success: boolean; sent?: number; failed?: number; error?: string }>(`/api/broadcasts/${id}/test-send`, { method: 'POST' }),
     getProgress: (id: string) =>
       fetchApi<{ success: boolean; data?: { status: string; totalCount: number; successCount: number; batchOffset: number } }>(`/api/broadcasts/${id}/progress`),
+    getTargetCount: (id: string) =>
+      fetchApi<{ success: boolean; count: number | null }>(`/api/broadcasts/${id}/target-count`),
     sendSegment: (id: string, conditions: unknown) =>
       fetchApi<ApiResponse<ApiBroadcast>>(`/api/broadcasts/${id}/send-segment`, {
         method: 'POST',

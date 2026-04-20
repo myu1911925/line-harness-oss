@@ -66,6 +66,31 @@ broadcasts.get('/api/broadcasts/:id', async (c) => {
   }
 });
 
+// GET /api/broadcasts/:id/target-count — sendと同じロジックで対象人数を返す
+broadcasts.get('/api/broadcasts/:id/target-count', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const broadcast = await getBroadcastById(c.env.DB, id);
+    if (!broadcast) return c.json({ success: false, error: 'Not found' }, 404);
+
+    if (broadcast.target_type === 'all') {
+      return c.json({ success: true, count: null });
+    }
+
+    if (broadcast.target_type === 'tag' && broadcast.target_tag_id) {
+      const { getFriendsByTag } = await import('@line-crm/db');
+      const friends = await getFriendsByTag(c.env.DB, broadcast.target_tag_id);
+      const count = friends.filter(f => f.is_following).length;
+      return c.json({ success: true, count });
+    }
+
+    return c.json({ success: true, count: 0 });
+  } catch (err) {
+    console.error('GET /api/broadcasts/:id/target-count error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 // POST /api/broadcasts - create
 broadcasts.post('/api/broadcasts', async (c) => {
   try {

@@ -53,20 +53,14 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
 
   useEffect(() => { load() }, [load])
 
-  // ドラフトのタグ配信は total_count=0 のため動的にカウントを取得
+  // ドラフトは total_count=0 のため、送信と同じロジックで対象人数を取得
   useEffect(() => {
     if (!broadcast) return
-    if (broadcast.targetType !== 'tag' || !broadcast.targetTagId) return
     if (broadcast.totalCount > 0) return
-    const raw = broadcast as unknown as Record<string, unknown>
-    const accountId = raw.lineAccountId as string | null
-    api.segments.count(
-      { operator: 'AND', rules: [{ type: 'tag_exists', value: broadcast.targetTagId }] },
-      accountId ?? undefined
-    ).then(res => {
+    api.broadcasts.getTargetCount(id).then(res => {
       if (res.success && res.count != null) setTargetCount(res.count)
-    })
-  }, [broadcast])
+    }).catch(() => {})
+  }, [broadcast, id])
 
   // Poll progress while sending
   useEffect(() => {
