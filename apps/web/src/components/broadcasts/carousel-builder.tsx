@@ -24,7 +24,7 @@ const emptyBubble = (): BubbleData => ({
   imageUrl: '',
   title: '',
   description: '',
-  buttonLabel: '商品を見る',
+  buttonLabel: '詳しく見る',
   productUrl: '',
   utmCampaign: defaultCampaign(),
 })
@@ -81,7 +81,7 @@ function buildFlexJson(bubbles: BubbleData[]): string {
           type: 'button',
           action: {
             type: 'uri',
-            label: b.buttonLabel || '商品を見る',
+            label: b.buttonLabel || '詳しく見る',
             uri: url,
           },
           style: 'primary',
@@ -217,7 +217,7 @@ export default function CarouselBuilder({ onChange }: CarouselBuilderProps) {
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                placeholder="商品を見る"
+                placeholder="詳しく見る"
                 value={bubble.buttonLabel}
                 onChange={(e) => update(index, 'buttonLabel', e.target.value)}
               />
