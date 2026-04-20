@@ -484,7 +484,7 @@ broadcasts.post('/api/segments/count', async (c) => {
     let accountSql = sql;
     const accountBindings = [...bindings];
     if (body.accountId) {
-      accountSql = sql.replace('WHERE', 'WHERE f.line_account_id = ? AND');
+      accountSql = sql.replace('WHERE', 'WHERE (f.line_account_id = ? OR f.line_account_id IS NULL) AND');
       accountBindings.unshift(body.accountId);
     }
 
