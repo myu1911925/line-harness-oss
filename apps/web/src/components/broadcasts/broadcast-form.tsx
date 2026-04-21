@@ -19,6 +19,7 @@ const messageTypeLabels: Record<ApiBroadcast['messageType'], string> = {
   text: 'テキスト',
   image: '画像',
   flex: 'Flexメッセージ',
+  carousel: 'カルーセル',
 }
 
 interface FormState {
@@ -50,7 +51,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
   const handleSave = async () => {
     if (!form.title.trim()) { setError('配信タイトルを入力してください'); return }
     if (!form.messageContent.trim()) { setError('メッセージ内容を入力してください'); return }
-    if (form.messageType === 'flex') {
+    if (form.messageType === 'flex' || form.messageType === 'carousel') {
       try { JSON.parse(form.messageContent) } catch { setError('FlexメッセージのJSONが無効です'); return }
     }
     if (!form.sendNow && !form.scheduledAt) {
@@ -132,7 +133,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             メッセージ内容 <span className="text-red-500">*</span>
-            {(form.messageType === 'flex' || form.messageType === 'image') && (
+            {(form.messageType === 'flex' || form.messageType === 'carousel' || form.messageType === 'image') && (
               <span className="ml-1 text-gray-400">(JSON形式)</span>
             )}
           </label>
@@ -174,7 +175,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
             )
           })()}
 
-          {form.messageType === 'flex' ? (
+          {(form.messageType === 'flex' || form.messageType === 'carousel') ? (
             <>
               {/* Builder / Raw toggle */}
               <div className="flex gap-1 mb-3">
