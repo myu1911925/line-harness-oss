@@ -125,7 +125,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
         title={broadcast.title}
         action={
           <div className="flex gap-2 items-center">
-            {broadcast.status === 'draft' && !editing && (
+            {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && !editing && (
               <button
                 onClick={() => setEditing(true)}
                 className="px-3 py-2 text-sm font-medium text-white rounded-lg"
@@ -148,8 +148,8 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
       )}
 
-      {/* Edit form for drafts */}
-      {broadcast.status === 'draft' && editing && (
+      {/* Edit form for drafts and scheduled */}
+      {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && editing && (
         <div className="mb-4">
           <BroadcastForm
             tags={tags}

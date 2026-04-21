@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
+import CarouselBuilder from '@/components/broadcasts/carousel-builder'
 
 interface Template {
   id: string
@@ -19,6 +20,7 @@ const messageTypeLabels: Record<string, string> = {
   text: 'テキスト',
   image: '画像',
   flex: 'Flex',
+  carousel: 'カルーセル',
 }
 
 interface CreateFormState {
@@ -233,17 +235,22 @@ export default function TemplatesPage() {
                 <option value="text">テキスト</option>
                 <option value="image">画像</option>
                 <option value="flex">Flex</option>
+                <option value="carousel">カルーセル</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                rows={4}
-                placeholder="メッセージ内容を入力してください"
-                value={form.messageContent}
-                onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
-              />
+              {form.messageType === 'carousel' ? (
+                <CarouselBuilder onChange={(json) => setForm({ ...form, messageContent: json })} />
+              ) : (
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  rows={4}
+                  placeholder="メッセージ内容を入力してください"
+                  value={form.messageContent}
+                  onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
+                />
+              )}
             </div>
 
             {formError && <p className="text-xs text-red-600">{formError}</p>}

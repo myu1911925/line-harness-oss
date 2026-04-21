@@ -9,10 +9,14 @@ import {
   jstNow,
   updateBroadcastLineRequestId,
   createBroadcastInsight,
+  getLineAccountById,
 } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
+import { LineClient as LC } from '@line-crm/line-sdk';
 import type { LineClient } from '@line-crm/line-sdk';
 import type { Message } from '@line-crm/line-sdk';
+import { autoTrackContent } from './auto-track.js';
+import { buildSegmentQuery } from './segment-query.js';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
 
 const MULTICAST_BATCH_SIZE = 500;
@@ -35,7 +39,6 @@ export async function processBroadcastSend(
   let finalType: string = broadcast.message_type;
   let finalContent = broadcast.message_content;
   if (workerUrl) {
-    const { autoTrackContent } = await import('./auto-track.js');
     const tracked = await autoTrackContent(db, broadcast.message_type, broadcast.message_content, workerUrl);
     finalType = tracked.messageType;
     finalContent = tracked.content;
@@ -142,10 +145,8 @@ export async function processScheduledBroadcasts(
       let deliveryClient = lineClient;
       const accountId = (broadcast as unknown as Record<string, unknown>).line_account_id as string | null;
       if (accountId) {
-        const { getLineAccountById } = await import('@line-crm/db');
         const account = await getLineAccountById(db, accountId);
         if (account) {
-          const { LineClient: LC } = await import('@line-crm/line-sdk');
           deliveryClient = new LC(account.channel_access_token);
         }
       }
@@ -179,9 +180,8 @@ export async function processQueuedBroadcasts(
     const accountId = (broadcast as unknown as Record<string, unknown>).line_account_id as string | null;
     let client = lineClient;
     if (accountId) {
-      const { getLineAccountById } = await import('@line-crm/db');
       const account = await getLineAccountById(db, accountId);
-      if (account) client = new (await import('@line-crm/line-sdk')).LineClient(account.channel_access_token);
+      if (account) client = new LC(account.channel_access_token);
     }
 
     try {
@@ -216,7 +216,6 @@ async function processQueuedBroadcastBatches(
   let finalType: string = broadcast.message_type;
   let finalContent = broadcast.message_content;
   if (workerUrl && batchOffset === 0) {
-    const { autoTrackContent } = await import('./auto-track.js');
     const tracked = await autoTrackContent(db, broadcast.message_type, broadcast.message_content, workerUrl);
     finalType = tracked.messageType;
     finalContent = tracked.content;
@@ -234,7 +233,6 @@ async function processQueuedBroadcastBatches(
   const accountId = raw.line_account_id as string | null;
   let friends: Array<{ id: string; line_user_id: string }>;
   if (segmentConditionsStr) {
-    const { buildSegmentQuery } = await import('./segment-query.js');
     const condition = JSON.parse(segmentConditionsStr);
     const { sql, bindings } = buildSegmentQuery(condition);
     // アカウントフィルタを追加（line_account_idで絞り込み）
@@ -247,7 +245,6 @@ async function processQueuedBroadcastBatches(
     const result = await db.prepare(accountSql).bind(...accountBindings).all<{ id: string; line_user_id: string }>();
     friends = result.results ?? [];
   } else if (broadcast.target_tag_id) {
-    const { getFriendsByTag } = await import('@line-crm/db');
     const tagFriends = await getFriendsByTag(db, broadcast.target_tag_id);
     friends = tagFriends.filter(f => f.is_following).map(f => ({ id: f.id, line_user_id: f.line_user_id }));
   } else {

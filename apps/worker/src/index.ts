@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { LineClient } from '@line-crm/line-sdk';
-import { getLineAccounts, getTrafficPoolBySlug, getRandomPoolAccount, getPoolAccounts } from '@line-crm/db';
+import { getLineAccounts, getTrafficPoolBySlug, getRandomPoolAccount, getPoolAccounts, recoverStalledBroadcasts, recoverStuckDeliveries } from '@line-crm/db';
+import { processDuplicateDetection } from './services/duplicate-detect.js';
 import { processStepDeliveries } from './services/step-delivery.js';
 import { processScheduledBroadcasts, processQueuedBroadcasts } from './services/broadcast.js';
 import { processReminderDeliveries } from './services/reminder-delivery.js';
@@ -353,7 +354,6 @@ async function scheduled(
   );
   // キュー処理は1回だけ実行（内部でアカウント別lineClientを解決する）
   // ロック解除: タイムアウトでstuckした配信を復旧
-  const { recoverStalledBroadcasts, recoverStuckDeliveries } = await import('@line-crm/db');
   jobs.push(recoverStuckDeliveries(env.DB));
   jobs.push(recoverStalledBroadcasts(env.DB));
   jobs.push(processQueuedBroadcasts(env.DB, defaultLineClient, env.WORKER_URL));
@@ -371,7 +371,6 @@ async function scheduled(
 
   // Cross-account duplicate detection & auto-tagging
   try {
-    const { processDuplicateDetection } = await import('./services/duplicate-detect.js');
     await processDuplicateDetection(env.DB);
   } catch (e) {
     console.error('Duplicate detection error:', e);

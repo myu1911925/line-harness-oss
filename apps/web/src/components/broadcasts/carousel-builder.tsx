@@ -24,7 +24,7 @@ const emptyBubble = (): BubbleData => ({
   imageUrl: '',
   title: '',
   description: '',
-  buttonLabel: '詳しく見る',
+  buttonLabel: '詳しく見る →',
   productUrl: '',
   utmCampaign: defaultCampaign(),
 })
@@ -37,7 +37,7 @@ function buildFlexJson(bubbles: BubbleData[]): string {
 
     const bubble: Record<string, unknown> = {
       type: 'bubble',
-      size: 'kilo',
+      size: 'mega',
     }
 
     if (b.imageUrl) {
@@ -45,7 +45,7 @@ function buildFlexJson(bubbles: BubbleData[]): string {
         type: 'image',
         url: b.imageUrl,
         size: 'full',
-        aspectRatio: '20:13',
+        aspectRatio: '1:1',
         aspectMode: 'cover',
       }
     }
@@ -53,7 +53,7 @@ function buildFlexJson(bubbles: BubbleData[]): string {
     bubble.body = {
       type: 'box',
       layout: 'vertical',
-      spacing: 'sm',
+      spacing: 'xs',
       contents: [
         ...(b.title ? [{
           type: 'text',
@@ -67,7 +67,7 @@ function buildFlexJson(bubbles: BubbleData[]): string {
           type: 'text',
           text: b.description,
           size: 'sm',
-          color: '#666666',
+          color: '#7A6A67',
           wrap: true,
         }] : []),
       ],
@@ -81,11 +81,11 @@ function buildFlexJson(bubbles: BubbleData[]): string {
           type: 'button',
           action: {
             type: 'uri',
-            label: b.buttonLabel || '詳しく見る',
+            label: b.buttonLabel || '詳しく見る →',
             uri: url,
           },
           style: 'primary',
-          color: '#C97878',
+          color: '#C43435',
         }],
       }
     }
