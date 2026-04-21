@@ -64,6 +64,7 @@ export default function BroadcastsPage() {
 
 function BroadcastList() {
   const { selectedAccountId } = useAccount()
+  const router = useRouter()
   const [broadcasts, setBroadcasts] = useState<ApiBroadcast[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,6 +128,23 @@ function BroadcastList() {
       load()
     } catch {
       setError('削除に失敗しました')
+    }
+  }
+
+  const handleCopy = async (broadcast: ApiBroadcast) => {
+    try {
+      const res = await api.broadcasts.create({
+        title: `${broadcast.title} のコピー`,
+        messageType: broadcast.messageType,
+        messageContent: broadcast.messageContent,
+        targetType: broadcast.targetType,
+        targetTagId: broadcast.targetTagId ?? undefined,
+      })
+      if (res.success) {
+        router.push(`/broadcasts?id=${res.data.id}`)
+      }
+    } catch {
+      setError('コピーに失敗しました')
     }
   }
 
@@ -225,7 +243,7 @@ function BroadcastList() {
                           {broadcast.title}
                         </a>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {broadcast.messageType === 'text' ? 'テキスト' : broadcast.messageType === 'image' ? '画像' : 'Flex'}
+                          {{ text: 'テキスト', image: '画像', flex: 'Flex', carousel: 'カルーセル' }[broadcast.messageType] ?? broadcast.messageType}
                         </p>
                       </div>
                     </td>
@@ -303,6 +321,12 @@ function BroadcastList() {
                     {/* Actions */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleCopy(broadcast)}
+                          className="px-3 py-1 min-h-[44px] text-xs font-medium text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                        >
+                          コピー
+                        </button>
                         {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && (
                           <button
                             onClick={() => handleDelete(broadcast.id)}

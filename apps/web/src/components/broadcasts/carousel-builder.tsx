@@ -12,7 +12,38 @@ interface BubbleData {
 }
 
 interface CarouselBuilderProps {
+  initialJson?: string
   onChange: (json: string) => void
+}
+
+function parseFlexToBuilder(json: string): BubbleData[] {
+  try {
+    const parsed = JSON.parse(json)
+    const bubbles = parsed.type === 'carousel' ? parsed.contents : [parsed]
+    return bubbles.map((b: Record<string, unknown>): BubbleData => {
+      const hero = b.hero as Record<string, string> | undefined
+      type BodyContent = { text?: string; weight?: string; size?: string }
+      const body = b.body as { contents: BodyContent[] } | undefined
+      const footer = b.footer as { contents: { action?: { label?: string; uri?: string } }[] } | undefined
+      const contents = body?.contents ?? []
+      const titleItem = contents.find(c => c.weight === 'bold')
+      const descItem = contents.find(c => c.size === 'sm' && !c.weight)
+      const uri = footer?.contents?.[0]?.action?.uri ?? ''
+      const urlObj = uri ? (() => { try { return new URL(uri) } catch { return null } })() : null
+      const utmCampaign = urlObj?.searchParams.get('utm_campaign') ?? defaultCampaign()
+      const productUrl = urlObj ? `${urlObj.origin}${urlObj.pathname}` : ''
+      return {
+        imageUrl: hero?.url ?? '',
+        title: titleItem?.text ?? '',
+        description: descItem?.text ?? '',
+        buttonLabel: footer?.contents?.[0]?.action?.label ?? '詳しく見る →',
+        productUrl,
+        utmCampaign,
+      }
+    })
+  } catch {
+    return [emptyBubble()]
+  }
 }
 
 const defaultCampaign = () => {
@@ -97,8 +128,10 @@ function buildFlexJson(bubbles: BubbleData[]): string {
   return JSON.stringify({ type: 'carousel', contents }, null, 2)
 }
 
-export default function CarouselBuilder({ onChange }: CarouselBuilderProps) {
-  const [bubbles, setBubbles] = useState<BubbleData[]>([emptyBubble()])
+export default function CarouselBuilder({ initialJson, onChange }: CarouselBuilderProps) {
+  const [bubbles, setBubbles] = useState<BubbleData[]>(() =>
+    initialJson ? parseFlexToBuilder(initialJson) : [emptyBubble()]
+  )
 
   useEffect(() => {
     onChange(buildFlexJson(bubbles))

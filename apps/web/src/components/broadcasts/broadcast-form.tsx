@@ -204,6 +204,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
 
               {flexMode === 'builder' ? (
                 <CarouselBuilder
+                  initialJson={form.messageContent}
                   onChange={(json) => setForm((f) => ({ ...f, messageContent: json }))}
                 />
               ) : (
