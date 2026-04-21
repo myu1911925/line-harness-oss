@@ -142,6 +142,8 @@ function BroadcastList() {
       })
       if (res.success) {
         router.push(`/broadcasts?id=${res.data.id}`)
+      } else {
+        setError(res.error ?? 'コピーに失敗しました')
       }
     } catch {
       setError('コピーに失敗しました')
