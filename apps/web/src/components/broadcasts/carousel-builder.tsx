@@ -195,7 +195,7 @@ export default function CarouselBuilder({ onChange }: CarouselBuilderProps) {
                 <input
                   type="url"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                  placeholder="https://kimonosenkosha.com/products/..."
+                  placeholder="https://example.com/products/..."
                   value={bubble.productUrl}
                   onChange={(e) => update(index, 'productUrl', e.target.value)}
                 />
