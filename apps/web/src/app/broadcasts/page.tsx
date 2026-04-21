@@ -34,7 +34,7 @@ const statusConfig: Record<
   { label: string; className: string }
 > = {
   draft: { label: '下書き', className: 'bg-gray-100 text-gray-600' },
-  scheduled: { label: '予約済み', className: 'bg-blue-100 text-blue-700' },
+  scheduled: { label: '予約済み', className: 'bg-red-100 text-red-700' },
   sending: { label: '送信中', className: 'bg-yellow-100 text-yellow-700' },
   sent: { label: '送信完了', className: 'bg-green-100 text-green-700' },
 }
@@ -220,10 +220,7 @@ function BroadcastList() {
                   配信対象
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  予約日時
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  送信完了日時
+                  日時
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   実績
@@ -252,7 +249,7 @@ function BroadcastList() {
 
                     {/* Status */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusInfo.className}`}>
                         {statusInfo.label}
                       </span>
                     </td>
@@ -268,14 +265,21 @@ function BroadcastList() {
                       )}
                     </td>
 
-                    {/* Scheduled */}
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {formatDatetime(broadcast.scheduledAt)}
-                    </td>
-
-                    {/* Sent */}
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {formatDatetime(broadcast.sentAt)}
+                    {/* Date */}
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {broadcast.status === 'scheduled' && broadcast.scheduledAt ? (
+                        <div>
+                          <p className="text-xs text-gray-400">予約</p>
+                          <p>{formatDatetime(broadcast.scheduledAt)}</p>
+                        </div>
+                      ) : broadcast.status === 'sent' && broadcast.sentAt ? (
+                        <div>
+                          <p className="text-xs text-gray-400">送信完了</p>
+                          <p>{formatDatetime(broadcast.sentAt)}</p>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
                     </td>
 
                     {/* Stats & Insight */}
