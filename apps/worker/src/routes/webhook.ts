@@ -119,6 +119,11 @@ async function handleEvent(
       console.log(`[follow] line_account_id set to ${lineAccountId} for friend ${friend.id}`);
     }
 
+    // 友達追加イベントを記録
+    await db.prepare(
+      `INSERT INTO friend_events (id, friend_id, line_account_id, event_type) VALUES (?, ?, ?, 'follow')`
+    ).bind(crypto.randomUUID(), friend.id, lineAccountId ?? null).run();
+
     // friend_add シナリオに登録（このアカウントのシナリオのみ）
     const scenarios = await getScenarios(db);
     for (const scenario of scenarios) {
@@ -222,6 +227,12 @@ async function handleEvent(
     if (!userId) return;
 
     await updateFriendFollowStatus(db, userId, false);
+    const unfollowedFriend = await getFriendByLineUserId(db, userId);
+    if (unfollowedFriend) {
+      await db.prepare(
+        `INSERT INTO friend_events (id, friend_id, line_account_id, event_type) VALUES (?, ?, ?, 'unfollow')`
+      ).bind(crypto.randomUUID(), unfollowedFriend.id, lineAccountId ?? null).run();
+    }
     return;
   }
 

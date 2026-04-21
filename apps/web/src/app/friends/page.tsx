@@ -40,6 +40,8 @@ export default function FriendsPage() {
   const [selectedTagId, setSelectedTagId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dailyStats, setDailyStats] = useState<Array<{ date: string; follows: number; unfollows: number }>>([])
+  const [statsLoading, setStatsLoading] = useState(true)
 
   const loadTags = useCallback(async () => {
     try {
@@ -81,6 +83,13 @@ export default function FriendsPage() {
   }, [loadTags])
 
   useEffect(() => {
+    setStatsLoading(true)
+    api.friends.dailyStats({ accountId: selectedAccountId ?? undefined, days: 7 })
+      .then(res => { if (res.success) setDailyStats(res.data) })
+      .finally(() => setStatsLoading(false))
+  }, [selectedAccountId])
+
+  useEffect(() => {
     setPage(1)
   }, [selectedTagId, selectedAccountId])
 
@@ -95,6 +104,38 @@ export default function FriendsPage() {
   return (
     <div>
       <Header title="友だち管理" />
+
+      {/* Daily Stats */}
+      {!statsLoading && dailyStats.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">直近7日間の増減</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-500 text-xs border-b">
+                <th className="text-left pb-2">日付</th>
+                <th className="text-right pb-2 text-green-600">追加</th>
+                <th className="text-right pb-2 text-red-500">ブロック</th>
+                <th className="text-right pb-2 text-gray-600">純増</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyStats.map(row => {
+                const net = row.follows - row.unfollows
+                return (
+                  <tr key={row.date} className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-700">{row.date}</td>
+                    <td className="py-1.5 text-right text-green-600">+{row.follows}</td>
+                    <td className="py-1.5 text-right text-red-500">-{row.unfollows}</td>
+                    <td className={`py-1.5 text-right font-medium ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {net >= 0 ? '+' : ''}{net}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mb-4">

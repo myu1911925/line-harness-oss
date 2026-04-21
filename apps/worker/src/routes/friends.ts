@@ -135,6 +135,34 @@ friends.get('/api/friends/count', async (c) => {
   }
 });
 
+// GET /api/friends/daily-stats - daily follow/unfollow counts
+friends.get('/api/friends/daily-stats', async (c) => {
+  try {
+    const lineAccountId = c.req.query('lineAccountId');
+    const days = Number(c.req.query('days') ?? '7');
+    const accountFilter = lineAccountId ? 'AND line_account_id = ?' : '';
+    const query = `
+      SELECT
+        strftime('%Y-%m-%d', created_at) as date,
+        SUM(CASE WHEN event_type = 'follow' THEN 1 ELSE 0 END) as follows,
+        SUM(CASE WHEN event_type = 'unfollow' THEN 1 ELSE 0 END) as unfollows
+      FROM friend_events
+      WHERE created_at >= strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours', '-' || ? || ' days')
+      ${accountFilter}
+      GROUP BY date
+      ORDER BY date DESC
+    `;
+    const stmt = lineAccountId
+      ? c.env.DB.prepare(query).bind(days, lineAccountId)
+      : c.env.DB.prepare(query).bind(days);
+    const rows = await stmt.all<{ date: string; follows: number; unfollows: number }>();
+    return c.json({ success: true, data: rows.results });
+  } catch (err) {
+    console.error('GET /api/friends/daily-stats error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 // GET /api/friends/ref-stats - ref code attribution stats
 friends.get('/api/friends/ref-stats', async (c) => {
   try {

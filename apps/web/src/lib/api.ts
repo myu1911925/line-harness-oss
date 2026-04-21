@@ -103,6 +103,13 @@ export const api = {
       const query = params?.accountId ? '?lineAccountId=' + params.accountId : ''
       return fetchApi<ApiResponse<{ count: number }>>('/api/friends/count' + query)
     },
+    dailyStats: (params?: { accountId?: string; days?: number }) => {
+      const parts: string[] = []
+      if (params?.accountId) parts.push('lineAccountId=' + params.accountId)
+      if (params?.days) parts.push('days=' + params.days)
+      const query = parts.length ? '?' + parts.join('&') : ''
+      return fetchApi<ApiResponse<Array<{ date: string; follows: number; unfollows: number }>>>('/api/friends/daily-stats' + query)
+    },
     addTag: (friendId: string, tagId: string) =>
       fetchApi<ApiResponse<null>>(`/api/friends/${friendId}/tags`, {
         method: 'POST',
