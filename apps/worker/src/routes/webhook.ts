@@ -15,7 +15,7 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
-import { buildMessage, expandVariables } from '../services/step-delivery.js';
+import { buildMessage, expandVariables, resolveMetadata } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
@@ -130,12 +130,18 @@ async function handleEvent(
           const friendScenario = await enrollFriendInScenario(db, friend.id, scenario.id);
           if (!friendScenario) continue; // already enrolled
 
+          // 再登録判定：過去に completed な履歴があれば returning user
+          const previousCompleted = await db
+            .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ? AND status = ? LIMIT 1')
+            .bind(friend.id, scenario.id, 'completed')
+            .first();
+          const isReturningUser = !!previousCompleted;
+
             // Immediate delivery: if the first step has delay=0, send it now via replyMessage (free)
             const steps = await getScenarioSteps(db, scenario.id);
             const firstStep = steps[0];
             if (firstStep && firstStep.delay_minutes === 0 && friendScenario.status === 'active') {
               try {
-                const { resolveMetadata } = await import('../services/step-delivery.js');
                 const resolvedMeta = await resolveMetadata(db, { user_id: (friend as unknown as Record<string, string | null>).user_id, metadata: (friend as unknown as Record<string, string | null>).metadata });
                 const expandedContent = expandVariables(firstStep.message_content, { ...friend, metadata: resolvedMeta } as Parameters<typeof expandVariables>[1]);
                 const message = buildMessage(firstStep.message_type, expandedContent);
@@ -155,15 +161,43 @@ async function handleEvent(
                 // Advance or complete the friend_scenario
                 const secondStep = steps[1] ?? null;
                 if (secondStep) {
-                  const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
-                  nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + secondStep.delay_minutes);
-                  // Enforce 9:00-21:00 JST delivery window
-                  const h = nextDeliveryDate.getUTCHours();
-                  if (h < 9 || h >= 21) {
-                    if (h >= 21) nextDeliveryDate.setUTCDate(nextDeliveryDate.getUTCDate() + 1);
-                    nextDeliveryDate.setUTCHours(9, 0, 0, 0);
+                  if (secondStep.delay_minutes === 0) {
+                    // 再登録ユーザーにはStep2（クーポン等）を送らない
+                    if (!isReturningUser) {
+                      const resolvedMeta2 = await resolveMetadata(db, { user_id: (friend as unknown as Record<string, string | null>).user_id, metadata: (friend as unknown as Record<string, string | null>).metadata });
+                      const expandedContent2 = expandVariables(secondStep.message_content, { ...friend, metadata: resolvedMeta2 } as Parameters<typeof expandVariables>[1]);
+                      const message2 = buildMessage(secondStep.message_type, expandedContent2);
+                      await lineClient.pushMessage(userId, [message2]);
+                      const logId2 = crypto.randomUUID();
+                      await db.prepare(`INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at) VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, 'push', ?)`)
+                        .bind(logId2, friend.id, secondStep.message_type, secondStep.message_content, secondStep.id, jstNow()).run();
+                    } else {
+                      console.log(`Skipping step2 for returning user ${userId} in scenario ${scenario.id}`);
+                    }
+                    const thirdStep = steps[2] ?? null;
+                    if (thirdStep) {
+                      const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
+                      nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + thirdStep.delay_minutes);
+                      const h = nextDeliveryDate.getUTCHours();
+                      if (h < 9 || h >= 23) {
+                        if (h >= 23) nextDeliveryDate.setUTCDate(nextDeliveryDate.getUTCDate() + 1);
+                        nextDeliveryDate.setUTCHours(9, 0, 0, 0);
+                      }
+                      await advanceFriendScenario(db, friendScenario.id, secondStep.step_order, nextDeliveryDate.toISOString().slice(0, -1) + '+09:00');
+                    } else {
+                      await completeFriendScenario(db, friendScenario.id);
+                    }
+                  } else {
+                    const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
+                    nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + secondStep.delay_minutes);
+                    // Enforce 9:00-23:00 JST delivery window
+                    const h = nextDeliveryDate.getUTCHours();
+                    if (h < 9 || h >= 23) {
+                      if (h >= 23) nextDeliveryDate.setUTCDate(nextDeliveryDate.getUTCDate() + 1);
+                      nextDeliveryDate.setUTCHours(9, 0, 0, 0);
+                    }
+                    await advanceFriendScenario(db, friendScenario.id, firstStep.step_order, nextDeliveryDate.toISOString().slice(0, -1) + '+09:00');
                   }
-                  await advanceFriendScenario(db, friendScenario.id, firstStep.step_order, nextDeliveryDate.toISOString().slice(0, -1) + '+09:00');
                 } else {
                   await completeFriendScenario(db, friendScenario.id);
                 }
@@ -216,6 +250,7 @@ async function handleEvent(
         response_content: string;
       }>();
 
+    const matchedMessages: ReturnType<typeof buildMessage>[] = [];
     for (const rule of autoReplies.results) {
       const isMatch = rule.match_type === 'exact'
         ? postbackData === rule.keyword
@@ -223,15 +258,19 @@ async function handleEvent(
 
       if (isMatch) {
         try {
-          const { resolveMetadata } = await import('../services/step-delivery.js');
           const resolvedMeta = await resolveMetadata(db, { user_id: (friend as unknown as Record<string, string | null>).user_id, metadata: (friend as unknown as Record<string, string | null>).metadata });
           const expandedContent = expandVariables(rule.response_content, { ...friend, metadata: resolvedMeta } as Parameters<typeof expandVariables>[1], workerUrl);
-          const replyMsg = buildMessage(rule.response_type, expandedContent);
-          await lineClient.replyMessage(event.replyToken, [replyMsg]);
+          matchedMessages.push(buildMessage(rule.response_type, expandedContent));
         } catch (err) {
-          console.error('Failed to send postback reply', err);
+          console.error('Failed to build postback reply', err);
         }
-        break;
+      }
+    }
+    if (matchedMessages.length > 0) {
+      try {
+        await lineClient.replyMessage(event.replyToken, matchedMessages.slice(0, 5) as Parameters<typeof lineClient.replyMessage>[1]);
+      } catch (err) {
+        console.error('Failed to send postback reply', err);
       }
     }
     return;
@@ -316,8 +355,7 @@ async function handleEvent(
 
           for (const other of otherFriends.results) {
             const otherClient = new LineClient(other.channel_access_token);
-            const { buildMessage: bm } = await import('../services/step-delivery.js');
-            await otherClient.pushMessage(other.line_user_id, [bm('flex', JSON.stringify({
+            await otherClient.pushMessage(other.line_user_id, [buildMessage('flex', JSON.stringify({
               type: 'bubble', size: 'giga',
               header: { type: 'box', layout: 'vertical', paddingAll: '20px', backgroundColor: '#fffbeb',
                 contents: [{ type: 'text', text: `${friend.display_name || ''}さんへ`, size: 'lg', weight: 'bold', color: '#1e293b' }],
@@ -385,8 +423,7 @@ async function handleEvent(
       if (isMatch) {
         try {
           // Expand template variables ({{name}}, {{uid}}, {{auth_url:CHANNEL_ID}})
-          const { resolveMetadata: resolveMeta2 } = await import('../services/step-delivery.js');
-          const resolvedMeta2 = await resolveMeta2(db, { user_id: (friend as unknown as Record<string, string | null>).user_id, metadata: (friend as unknown as Record<string, string | null>).metadata });
+          const resolvedMeta2 = await resolveMetadata(db, { user_id: (friend as unknown as Record<string, string | null>).user_id, metadata: (friend as unknown as Record<string, string | null>).metadata });
           const expandedContent = expandVariables(rule.response_content, { ...friend, metadata: resolvedMeta2 } as Parameters<typeof expandVariables>[1], workerUrl);
           const replyMsg = buildMessage(rule.response_type, expandedContent);
           await lineClient.replyMessage(event.replyToken, [replyMsg]);
