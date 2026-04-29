@@ -38,6 +38,8 @@ export default function FriendsPage() {
   const [page, setPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [selectedTagId, setSelectedTagId] = useState('')
+  const [sortBy, setSortBy] = useState<'display_name' | 'created_at' | 'status'>('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dailyStats, setDailyStats] = useState<Array<{ date: string; follows: number; unfollows: number }>>([])
@@ -62,6 +64,8 @@ export default function FriendsPage() {
       }
       if (selectedTagId) params.tagId = selectedTagId
       if (selectedAccountId) params.accountId = selectedAccountId
+      params.sortBy = sortBy
+      params.sortOrder = sortOrder
 
       const res = await api.friends.list(params)
       if (res.success) {
@@ -76,7 +80,17 @@ export default function FriendsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, selectedTagId, selectedAccountId])
+  }, [page, selectedTagId, selectedAccountId, sortBy, sortOrder])
+
+  const handleSort = (col: 'display_name' | 'created_at' | 'status') => {
+    if (col === sortBy) {
+      setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(col)
+      setSortOrder('desc')
+    }
+    setPage(1)
+  }
 
   useEffect(() => {
     loadTags()
@@ -185,6 +199,9 @@ export default function FriendsPage() {
           friends={friends}
           allTags={allTags}
           onRefresh={loadFriends}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
       )}
 

@@ -70,8 +70,14 @@ export type Env = {
 
 const app = new Hono<Env>();
 
-// CORS — allow all origins for MVP
-app.use('*', cors({ origin: '*' }));
+// CORS — restrict to admin frontend origin
+app.use('*', async (c, next) => {
+  const corsMiddlewareHandler = cors({
+    origin: (c.env as unknown as Record<string, string | undefined>).CORS_ORIGIN ?? 'https://line-harness-oss-web-virid.vercel.app',
+    credentials: false,
+  })
+  return corsMiddlewareHandler(c, next)
+});
 
 // Rate limiting — runs before auth to block abuse early
 app.use('*', rateLimitMiddleware);

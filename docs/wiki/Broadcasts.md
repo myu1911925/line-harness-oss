@@ -12,7 +12,7 @@
 |--------|-----|------|
 | `id` | TEXT (UUID) | 主キー |
 | `title` | TEXT | 配信タイトル（管理用） |
-| `message_type` | TEXT | `text` / `image` / `flex` |
+| `message_type` | TEXT | `text` / `image` / `flex` / `carousel` |
 | `message_content` | TEXT | メッセージ内容 |
 | `target_type` | TEXT | `all` / `tag` |
 | `target_tag_id` | TEXT | tag 指定時のタグID |
@@ -41,6 +41,77 @@
   "createdAt": "2026-03-23T13:50:00.000+09:00"
 }
 ```
+
+## メッセージ種別
+
+| messageType | 内容 | messageContent 形式 |
+|-------------|------|-------------------|
+| `text` | テキスト | プレーンテキスト |
+| `image` | 画像 | `{"originalContentUrl":"...","previewImageUrl":"..."}` |
+| `flex` | Flex メッセージ | LINE Flex Message JSON（bubble 単体） |
+| `carousel` | カルーセル | LINE Flex Message JSON（carousel または bubble） |
+
+### カルーセル (carousel) の JSON 構造
+
+カルーセルビルダーが生成する Flex JSON:
+
+```json
+// 複数コマの場合
+{
+  "type": "carousel",
+  "contents": [
+    {
+      "type": "bubble",
+      "size": "mega",
+      "hero": {
+        "type": "image",
+        "url": "https://cdn.shopify.com/...",
+        "size": "full",
+        "aspectRatio": "1:1",
+        "aspectMode": "cover"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "contents": [
+          { "type": "text", "text": "商品名", "weight": "bold", "size": "md", "wrap": true, "color": "#333333" },
+          { "type": "text", "text": "説明文", "size": "sm", "color": "#7A6A67", "wrap": true }
+        ]
+      },
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [{
+          "type": "button",
+          "action": { "type": "uri", "label": "詳しく見る →", "uri": "https://example.com?utm_source=line&utm_medium=broadcast&utm_campaign=line260421" },
+          "style": "primary",
+          "color": "#C43435"
+        }]
+      }
+    }
+  ]
+}
+
+// 1コマの場合は carousel ではなく bubble 直接
+{
+  "type": "bubble",
+  "size": "mega",
+  ...
+}
+```
+
+### カルーセルビルダー UI
+
+管理画面の配信作成・編集フォームにビジュアルエディタを搭載:
+
+- **最大 10 コマ**（LINE API 上限）
+- **各コマの設定項目**: 画像URL（任意）、商品名（必須）、説明文（任意）、商品URL（必須）、UTMキャンペーン、ボタンラベル
+- **UTM 自動付与**: 商品URLに `utm_source=line&utm_medium=broadcast&utm_campaign=<設定値>` を自動追加
+- **プレビュー**: JSON直接入力モードでリアルタイムプレビュー表示
+- **編集時の初期値読み込み**: 保存済みのFlex JSONを解析してフォームに復元（コマ数・各フィールドを復元）
+- コマのコピー・削除・追加が可能
+- **モード切り替え**: カルーセルビルダー（ビジュアル）↔ JSON直接入力
 
 ## ステータスライフサイクル
 
@@ -275,7 +346,7 @@ curl -X POST "https://your-worker.your-subdomain.workers.dev/api/broadcasts" \
 | フィールド | 型 | 必須 | 説明 |
 |-----------|-----|------|------|
 | `title` | string | 必須 | 管理用タイトル |
-| `messageType` | string | 必須 | `text` / `image` / `flex` |
+| `messageType` | string | 必須 | `text` / `image` / `flex` / `carousel` |
 | `messageContent` | string | 必須 | メッセージ内容 |
 | `targetType` | string | 必須 | `all` / `tag` |
 | `targetTagId` | string | 条件付き | targetType=tag の場合必須 |
@@ -449,6 +520,44 @@ await client.broadcastToSegment('text', 'フィルタ済みメッセージ', {
   ],
 })
 ```
+
+## 管理画面の操作
+
+### 配信のコピー
+
+一覧の各行にある「コピー」ボタンで、既存の配信を複製して新しい下書きを作成できます。
+
+- コピーされる情報: タイトル（「〇〇 のコピー」）、messageType、messageContent、targetType、targetTagId
+- コピーされない情報: status（常に draft）、scheduledAt、sentAt、successCount
+- コピー完了後、新しい下書きの編集画面に自動遷移
+- 全ステータス（下書き・予約済み・送信済み）からコピー可能
+
+## インサイト（配信効果測定）
+
+送信済み配信の開封率・クリック率を LINE Official Account Manager から取得できます。
+
+### 取得方法
+
+1. 配信一覧の「インサイトを取得」ボタンをクリック
+2. LINE API からデータを取得しDBにキャッシュ
+3. 以降はキャッシュ済みデータを表示
+
+### 表示される指標
+
+| 指標 | 説明 |
+|------|------|
+| 配信数 (delivered) | 実際に届いた件数 |
+| 開封数 (uniqueImpression) | ユニーク開封数 |
+| 開封率 (openRate) | 開封数 / 配信数 |
+| クリック数 (uniqueClick) | ユニーククリック数 |
+| クリック率 (clickRate) | クリック数 / 配信数 |
+
+### API
+
+- `GET /api/broadcasts/:id/insight` — キャッシュ済みインサイトを取得（なければ null）
+- `POST /api/broadcasts/:id/fetch-insight` — LINE API から最新データを取得してキャッシュ
+
+注意: LINE API の集計には送信後数時間かかる場合があります。
 
 ## 配信失敗時の挙動
 

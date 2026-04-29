@@ -11,6 +11,7 @@ import {
   updateOutgoingWebhook,
   deleteOutgoingWebhook,
 } from '@line-crm/db';
+import { fireEvent } from '../services/event-bus.js';
 import type { Env } from '../index.js';
 
 const webhooks = new Hono<Env>();
@@ -145,10 +146,30 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
     const wh = await getIncomingWebhookById(c.env.DB, id);
     if (!wh || !wh.is_active) return c.json({ success: false, error: 'Webhook not found or inactive' }, 404);
 
-    const body = await c.req.json();
+    const rawBody = await c.req.text();
+
+    // Verify HMAC-SHA256 signature if secret is configured (timing-safe)
+    if (wh.secret) {
+      const sigHeader = c.req.header('X-Webhook-Signature') ?? '';
+      const providedHex = sigHeader.replace('sha256=', '');
+      const providedBytes = new Uint8Array(
+        (providedHex.match(/.{2}/g) ?? []).map(b => parseInt(b, 16))
+      );
+      const key = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(wh.secret),
+        { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+      );
+      const isValid = await crypto.subtle.verify(
+        'HMAC', key, providedBytes, new TextEncoder().encode(rawBody)
+      );
+      if (!isValid) {
+        return c.json({ success: false, error: 'Invalid signature' }, 401);
+      }
+    }
+
+    const body = JSON.parse(rawBody);
 
     // イベントバスに発火: source_type をイベントタイプとして使用
-    const { fireEvent } = await import('../services/event-bus.js');
     const eventType = `incoming_webhook.${wh.source_type}`;
     await fireEvent(c.env.DB, eventType, {
       eventData: { webhookId: wh.id, source: wh.source_type, payload: body },

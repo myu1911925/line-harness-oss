@@ -4,7 +4,9 @@ import {
   getStripeEventByStripeId,
   createStripeEvent,
   jstNow,
+  applyScoring,
 } from '@line-crm/db';
+import { fireEvent } from '../services/event-bus.js';
 import type { Env } from '../index.js';
 
 const stripe = new Hono<Env>();
@@ -87,20 +89,17 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
     const stripeSecret = (c.env as unknown as Record<string, string | undefined>).STRIPE_WEBHOOK_SECRET;
     let body: StripeWebhookBody;
 
-    if (stripeSecret) {
-      // 署名検証モード（本番環境）
-      const sigHeader = c.req.header('Stripe-Signature') ?? '';
-      const rawBody = await c.req.text();
-
-      const valid = await verifyStripeSignature(stripeSecret, rawBody, sigHeader);
-      if (!valid) {
-        return c.json({ success: false, error: 'Stripe signature verification failed' }, 401);
-      }
-      body = JSON.parse(rawBody) as StripeWebhookBody;
-    } else {
-      // シークレット未設定（開発環境向け）
-      body = await c.req.json<StripeWebhookBody>();
+    if (!stripeSecret) {
+      return c.json({ success: false, error: 'Stripe webhook secret not configured' }, 500);
     }
+    const sigHeader = c.req.header('Stripe-Signature') ?? '';
+    const rawBody = await c.req.text();
+
+    const valid = await verifyStripeSignature(stripeSecret, rawBody, sigHeader);
+    if (!valid) {
+      return c.json({ success: false, error: 'Stripe signature verification failed' }, 401);
+    }
+    body = JSON.parse(rawBody) as StripeWebhookBody;
 
     // 冪等性チェック
     const existing = await getStripeEventByStripeId(c.env.DB, body.id);
@@ -126,7 +125,6 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
 
     // 決済成功時の自動処理
     if (body.type === 'payment_intent.succeeded' && friendId) {
-      const { applyScoring } = await import('@line-crm/db');
       await applyScoring(db, friendId, 'purchase');
 
       // 自動タグ付け（product_idベース）
@@ -145,7 +143,6 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
       }
 
       // イベントバスに発火（自動化ルール用）
-      const { fireEvent } = await import('../services/event-bus.js');
       await fireEvent(db, 'cv_fire', { friendId, eventData: { type: 'purchase', amount: obj.amount, stripeEventId: body.id } });
     }
 

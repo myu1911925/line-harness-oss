@@ -80,6 +80,8 @@ export type FriendListParams = {
   tagId?: string
   accountId?: string
   search?: string
+  sortBy?: 'display_name' | 'created_at' | 'status'
+  sortOrder?: 'asc' | 'desc'
 }
 
 export type FriendWithTags = Friend & { tags: Tag[] }
@@ -93,6 +95,8 @@ export const api = {
       if (params?.tagId) query.tagId = params.tagId
       if (params?.accountId) query.lineAccountId = params.accountId
       if (params?.search) query.search = params.search
+      if (params?.sortBy) query.sortBy = params.sortBy
+      if (params?.sortOrder) query.sortOrder = params.sortOrder
       return fetchApi<ApiResponse<PaginatedResponse<FriendWithTags>>>(
         '/api/friends?' + new URLSearchParams(query)
       )
@@ -563,4 +567,34 @@ export const api = {
     regenerateKey: (id: string) =>
       fetchApi<ApiResponse<{ apiKey: string }>>(`/api/staff/${id}/regenerate-key`, { method: 'POST' }),
   },
+  autoReplies: {
+    list: (params?: { accountId?: string }) => {
+      const query: Record<string, string> = {}
+      if (params?.accountId) query.lineAccountId = params.accountId
+      return fetchApi<ApiResponse<AutoReply[]>>('/api/auto-replies?' + new URLSearchParams(query))
+    },
+    create: (data: { keyword: string; matchType: 'exact' | 'contains'; responseType: string; responseContent: string; isActive?: boolean }) =>
+      fetchApi<ApiResponse<AutoReply>>('/api/auto-replies', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<{ keyword: string; matchType: 'exact' | 'contains'; responseType: string; responseContent: string; isActive: boolean }>) =>
+      fetchApi<ApiResponse<AutoReply>>(`/api/auto-replies/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/auto-replies/${id}`, { method: 'DELETE' }),
+  },
+}
+
+export type AutoReply = {
+  id: string
+  keyword: string
+  matchType: 'exact' | 'contains'
+  responseType: string
+  responseContent: string
+  lineAccountId: string | null
+  isActive: boolean
+  createdAt: string
 }

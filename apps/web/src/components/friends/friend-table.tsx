@@ -10,9 +10,17 @@ interface FriendTableProps {
   friends: FriendWithTags[]
   allTags: Tag[]
   onRefresh: () => void
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  onSort?: (col: 'display_name' | 'created_at' | 'status') => void
 }
 
-export default function FriendTable({ friends, allTags, onRefresh }: FriendTableProps) {
+function SortIcon({ active, order }: { active: boolean; order?: 'asc' | 'desc' }) {
+  if (!active) return <span className="ml-1 text-gray-300">↕</span>
+  return <span className="ml-1">{order === 'asc' ? '▲' : '▼'}</span>
+}
+
+export default function FriendTable({ friends, allTags, onRefresh, sortBy, sortOrder, onSort }: FriendTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [addingTagForFriend, setAddingTagForFriend] = useState<string | null>(null)
   const [selectedTagId, setSelectedTagId] = useState('')
@@ -83,16 +91,28 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              アイコン / 表示名
+              {onSort ? (
+                <button onClick={() => onSort('display_name')} className="flex items-center hover:text-gray-700">
+                  アイコン / 表示名<SortIcon active={sortBy === 'display_name'} order={sortOrder} />
+                </button>
+              ) : 'アイコン / 表示名'}
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              ステータス
+              {onSort ? (
+                <button onClick={() => onSort('status')} className="flex items-center hover:text-gray-700">
+                  ステータス<SortIcon active={sortBy === 'status'} order={sortOrder} />
+                </button>
+              ) : 'ステータス'}
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
               タグ / 流入
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              登録日
+              {onSort ? (
+                <button onClick={() => onSort('created_at')} className="flex items-center hover:text-gray-700">
+                  登録日<SortIcon active={sortBy === 'created_at'} order={sortOrder} />
+                </button>
+              ) : '登録日'}
             </th>
             <th className="px-4 py-3" />
           </tr>

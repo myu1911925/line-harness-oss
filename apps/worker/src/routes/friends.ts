@@ -55,6 +55,15 @@ friends.get('/api/friends', async (c) => {
 
     const db = c.env.DB;
 
+    const allowedSort: Record<string, string> = {
+      display_name: 'f.display_name',
+      created_at: 'f.created_at',
+      status: 'CASE WHEN f.unfollowed_at IS NULL THEN 0 ELSE 1 END',
+    };
+    const sortByRaw = c.req.query('sortBy') ?? 'created_at';
+    const orderCol = allowedSort[sortByRaw] ?? 'f.created_at';
+    const sortOrder = c.req.query('sortOrder') === 'asc' ? 'ASC' : 'DESC';
+
     // Build WHERE conditions
     const conditions: string[] = [];
     const binds: unknown[] = [];
@@ -86,7 +95,7 @@ friends.get('/api/friends', async (c) => {
     const total = totalRow?.count ?? 0;
 
     const listStmt = db.prepare(
-      `SELECT f.* FROM friends f ${where} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT f.* FROM friends f ${where} ORDER BY ${orderCol} ${sortOrder} LIMIT ? OFFSET ?`,
     );
     const listBinds = [...binds, limit, offset];
     const listResult = await listStmt.bind(...listBinds).all<DbFriend>();
