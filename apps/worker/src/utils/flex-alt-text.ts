@@ -23,8 +23,8 @@ export function extractFlexAltText(obj: unknown, depth = 0): string {
 function extractFlexAltTextInner(obj: unknown, depth: number): string | null {
   if (depth > 10 || !obj || typeof obj !== 'object') return null;
   const node = obj as Record<string, unknown>;
-  if (node.type === 'text' && typeof node.text === 'string') {
-    return node.text.slice(0, 100);
+  if (node.type === 'text' && typeof node.text === 'string' && node.text.trim()) {
+    return node.text.trim().slice(0, 100);
   }
   if (Array.isArray(node.contents)) {
     for (const child of node.contents) {
