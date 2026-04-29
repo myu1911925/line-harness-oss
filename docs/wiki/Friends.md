@@ -86,6 +86,8 @@ curl -s "https://your-worker.your-subdomain.workers.dev/api/friends?tagId=TAG_UU
 | `limit` | number | 50 | 取得件数 |
 | `offset` | number | 0 | オフセット |
 | `tagId` | string | — | タグIDで絞り込み |
+| `sortBy` | string | `created_at` | ソート列: `display_name` / `created_at` / `status` |
+| `sortOrder` | string | `desc` | ソート順: `asc` / `desc` |
 
 レスポンス:
 
@@ -364,3 +366,19 @@ metadata はセグメント配信の条件として使用可能:
 
 ステップ配信の条件分岐でも使用可能:
 - `conditionType: "metadata_equals"`, `conditionValue: '{"key":"plan","value":"premium"}'`
+
+---
+
+## 管理画面での操作（2026-04-29 追加）
+
+### 友だち一覧のソート
+
+管理画面 `/friends` の一覧ヘッダーをクリックするとソートできる。
+
+| ヘッダー | ソート列 |
+|---------|---------|
+| アイコン / 表示名 | `display_name`（五十音順） |
+| ステータス | `status`（フォロー中 → ブロック順） |
+| 登録日 | `created_at`（デフォルト、新しい順） |
+
+同じ列を再度クリックすると昇順/降順が切り替わる（▲/▼で現在の方向を表示）。
