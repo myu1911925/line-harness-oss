@@ -96,9 +96,9 @@ function buildFlexJson(bubbles: BubbleData[]): string {
           color: '#333333',
         }] : []),
         ...(b.description
-          ? b.description.split('\n').filter(l => l.trim() !== '').map((line, i) => ({
+          ? b.description.split('\n').map((line, i) => ({
               type: 'text',
-              text: line,
+              text: line.trim() === '' ? ' ' : line,
               size: 'sm',
               color: '#7A6A67',
               wrap: true,
