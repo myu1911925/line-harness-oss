@@ -122,7 +122,10 @@ export default function FriendsPage() {
       {/* Daily Stats */}
       {!statsLoading && dailyStats.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">直近7日間の増減</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">直近7日間の増減</h3>
+            <span className="text-sm text-gray-500">現在の友だち総数: <span className="font-semibold text-gray-800">{total.toLocaleString('ja-JP')}人</span></span>
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-500 text-xs border-b">
