@@ -203,33 +203,29 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
                 </button>
               </div>
 
-              <div className="flex gap-4 items-start">
-                <div className="flex-1 min-w-0">
-                  {flexMode === 'builder' ? (
-                    <CarouselBuilder
-                      initialJson={form.messageContent}
-                      onChange={(json) => setForm((f) => ({ ...f, messageContent: json }))}
-                    />
-                  ) : (
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y font-mono"
-                      rows={8}
-                      placeholder='{"type":"bubble","body":{...}}'
-                      value={form.messageContent}
-                      onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
-                    />
-                  )}
-                </div>
+              {flexMode === 'builder' ? (
+                <CarouselBuilder
+                  initialJson={form.messageContent}
+                  onChange={(json) => setForm((f) => ({ ...f, messageContent: json }))}
+                />
+              ) : (
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y font-mono"
+                  rows={8}
+                  placeholder='{"type":"bubble","body":{...}}'
+                  value={form.messageContent}
+                  onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
+                />
+              )}
 
-                {form.messageContent && (() => {
-                  try { JSON.parse(form.messageContent); return true } catch { return false }
-                })() && (
-                  <div className="sticky top-4 w-[420px] shrink-0">
-                    <p className="text-xs font-medium text-gray-500 mb-2">プレビュー</p>
-                    <FlexPreviewComponent content={form.messageContent} maxWidth={420} />
-                  </div>
-                )}
-              </div>
+              {form.messageContent && (() => {
+                try { JSON.parse(form.messageContent); return true } catch { return false }
+              })() && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-gray-500 mb-2">プレビュー</p>
+                  <FlexPreviewComponent content={form.messageContent} maxWidth={300} />
+                </div>
+              )}
             </>
           ) : (
             <>
