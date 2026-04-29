@@ -27,7 +27,8 @@ function parseFlexToBuilder(json: string): BubbleData[] {
       const footer = b.footer as { contents: { action?: { label?: string; uri?: string } }[] } | undefined
       const contents = body?.contents ?? []
       const titleItem = contents.find(c => c.weight === 'bold')
-      const descItem = contents.find(c => c.size === 'sm' && !c.weight)
+      const descItems = contents.filter(c => c.size === 'sm' && !c.weight)
+      const descItem = descItems[0]
       const uri = footer?.contents?.[0]?.action?.uri ?? ''
       const urlObj = uri ? (() => { try { return new URL(uri) } catch { return null } })() : null
       const utmCampaign = urlObj?.searchParams.get('utm_campaign') ?? defaultCampaign()
@@ -35,7 +36,7 @@ function parseFlexToBuilder(json: string): BubbleData[] {
       return {
         imageUrl: hero?.url ?? '',
         title: titleItem?.text ?? '',
-        description: descItem?.text ?? '',
+        description: descItems.map(c => c.text ?? '').join('\n'),
         buttonLabel: footer?.contents?.[0]?.action?.label ?? '詳しく見る →',
         productUrl,
         utmCampaign,
@@ -94,13 +95,16 @@ function buildFlexJson(bubbles: BubbleData[]): string {
           wrap: true,
           color: '#333333',
         }] : []),
-        ...(b.description ? [{
-          type: 'text',
-          text: b.description,
-          size: 'sm',
-          color: '#7A6A67',
-          wrap: true,
-        }] : []),
+        ...(b.description
+          ? b.description.split('\n').filter(l => l.trim() !== '').map((line, i) => ({
+              type: 'text',
+              text: line,
+              size: 'sm',
+              color: '#7A6A67',
+              wrap: true,
+              ...(i > 0 ? { margin: 'xs' } : {}),
+            }))
+          : []),
       ],
     }
 
@@ -214,8 +218,8 @@ export default function CarouselBuilder({ initialJson, onChange }: CarouselBuild
             <div>
               <label className="block text-xs text-gray-500 mb-1">説明文（任意）</label>
               <textarea
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white resize-none"
-                rows={2}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                rows={5}
                 placeholder="例: 涼しげな透け感が人気の夏定番。"
                 value={bubble.description}
                 onChange={(e) => update(index, 'description', e.target.value)}
