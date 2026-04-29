@@ -175,7 +175,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
         {/* Left: Preview */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">メッセージプレビュー</h3>
-          {broadcast.messageType === 'flex' ? (
+          {(broadcast.messageType === 'flex' || broadcast.messageType === 'carousel') ? (
             <FlexPreviewComponent content={broadcast.messageContent} maxWidth={300} />
           ) : broadcast.messageType === 'image' ? (
             (() => {
@@ -197,7 +197,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-gray-500">種別</dt>
-              <dd className="text-gray-900">{broadcast.messageType === 'text' ? 'テキスト' : broadcast.messageType === 'image' ? '画像' : 'Flex'}</dd>
+              <dd className="text-gray-900">{{ text: 'テキスト', image: '画像', flex: 'Flex', carousel: 'カルーセル' }[broadcast.messageType] ?? broadcast.messageType}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-gray-500">対象</dt>
