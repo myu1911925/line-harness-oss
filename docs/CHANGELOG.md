@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.4.0 (2026-04-29)
+
+### Bug Fixes
+- **カルーセル配信が届かない問題を修正** — `buildMessage` が `carousel` タイプを未処理だったため生JSONをテキストとして送信していた。`flex` と同様に処理するよう修正
+- **multicast 全件失敗の修正** — `customAggregationUnits` パラメータがプラン制限でエラーになっていた。パラメータを削除して全プランで動作するよう修正
+- **DB スキーマ修正** — `broadcasts` / `scenario_steps` の `message_type` CHECK制約に `carousel` を追加（migration 029）
+
+### New Features
+- **自動応答管理画面** — キーワード・Flex・テキストの自動応答をGUIで管理（`/auto-replies`）
+- **友だち一覧ソート** — 表示名・ステータス・登録日でソート可能に
+
+### UI Improvements
+- カルーセル編集時、デフォルトでカルーセルビルダーを表示（JSON直接入力に切り替えない）
+- 保存後に一斉配信一覧へ自動リダイレクト
+- 説明文テキストエリアを拡大（5行）・リサイズ可能に
+- 説明文の改行（Enter）がLINEで正しく表示されるよう対応
+- 配信詳細ページでカルーセルをビジュアルプレビュー表示
+
+### Security
+- CORS をワイルドカード（`*`）から管理画面URLのみに制限
+- `/api/meet-callback` に認証を必須化
+- Stripe Webhook 署名検証を必須化（シークレット未設定は 500 で拒否）
+- Incoming Webhook に HMAC-SHA256 タイミングセーフ署名検証を追加
+- Worker の `await import()` を static import に移行
+- セキュリティヘッダー追加（`vercel.json`）
+- `CREDENTIALS.md` を git 管理外に移動・`.gitignore` に追加
+
 ## v0.3.0 (2026-04-21)
 
 ### New Features
