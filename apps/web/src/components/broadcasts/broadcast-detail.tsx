@@ -14,9 +14,10 @@ import type { Tag } from '@line-crm/shared'
 
 interface BroadcastDetailProps {
   broadcastId: string
+  initialEdit?: boolean
 }
 
-export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
+export default function BroadcastDetail({ broadcastId, initialEdit }: BroadcastDetailProps) {
   const id = broadcastId
   const router = useRouter()
   const { selectedAccount } = useAccount()
@@ -28,7 +29,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
   const [insight, setInsight] = useState<BroadcastInsight | null>(null)
   const [targetCount, setTargetCount] = useState<number | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(initialEdit ?? false)
 
   const load = useCallback(async () => {
     setLoading(true)

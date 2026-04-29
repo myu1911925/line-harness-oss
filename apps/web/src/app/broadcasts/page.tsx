@@ -53,10 +53,11 @@ function formatDatetime(iso: string | null): string {
 export default function BroadcastsPage() {
   const searchParams = useSearchParams()
   const detailId = searchParams.get('id')
+  const editParam = searchParams.get('edit') === 'true'
 
   // If ?id=xxx is present, show detail view
   if (detailId) {
-    return <BroadcastDetail broadcastId={detailId} />
+    return <BroadcastDetail broadcastId={detailId} initialEdit={editParam} />
   }
 
   return <BroadcastList />
@@ -141,7 +142,7 @@ function BroadcastList() {
         targetTagId: broadcast.targetTagId ?? undefined,
       })
       if (res.success) {
-        router.push(`/broadcasts?id=${res.data.id}`)
+        router.push(`/broadcasts?id=${res.data.id}&edit=true`)
       } else {
         setError(res.error ?? 'コピーに失敗しました')
       }
