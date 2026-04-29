@@ -224,9 +224,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
                 {form.messageContent && (() => {
                   try { JSON.parse(form.messageContent); return true } catch { return false }
                 })() && (
-                  <div className="sticky top-4 w-72 shrink-0">
+                  <div className="sticky top-4 w-[420px] shrink-0">
                     <p className="text-xs font-medium text-gray-500 mb-2">プレビュー</p>
-                    <FlexPreviewComponent content={form.messageContent} maxWidth={280} />
+                    <FlexPreviewComponent content={form.messageContent} maxWidth={420} />
                   </div>
                 )}
               </div>
