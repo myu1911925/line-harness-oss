@@ -99,8 +99,12 @@ export async function processBroadcastSend(
           );
           await db.batch(logStmts);
         } catch (err) {
-          console.error(`Multicast batch ${i / MULTICAST_BATCH_SIZE} failed:`, err);
-          // Continue with next batch; failed batch is not logged
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`Multicast batch ${i / MULTICAST_BATCH_SIZE} failed [ids=${lineUserIds.join(',')}]:`, errMsg);
+          // Save error for debugging visibility
+          await db.prepare(`UPDATE broadcasts SET segment_conditions = ? WHERE id = ?`)
+            .bind(JSON.stringify({ debug_error: errMsg, batch: i / MULTICAST_BATCH_SIZE, ids: lineUserIds }), broadcastId)
+            .run().catch(() => {});
         }
       }
       await updateBroadcastLineRequestId(db, broadcast.id, null, unit);
