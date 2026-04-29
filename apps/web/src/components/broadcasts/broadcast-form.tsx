@@ -46,7 +46,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel, editId, initi
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [flexMode, setFlexMode] = useState<'builder' | 'raw'>(editId ? 'raw' : 'builder')
+  const [flexMode, setFlexMode] = useState<'builder' | 'raw'>('builder')
 
   const handleSave = async () => {
     if (!form.title.trim()) { setError('配信タイトルを入力してください'); return }
