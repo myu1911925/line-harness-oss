@@ -87,7 +87,7 @@ export async function processBroadcastSend(
         }
 
         try {
-          await lineClient.multicast(lineUserIds, [batchMessage], [unit]);
+          await lineClient.multicast(lineUserIds, [batchMessage]);
           successCount += batch.length;
 
           // Log only successfully sent messages (batch insert for performance)
@@ -286,7 +286,7 @@ async function processQueuedBroadcastBatches(
     }
 
     try {
-      await lineClient.multicast(lineUserIds, [batchMessage], [unit]);
+      await lineClient.multicast(lineUserIds, [batchMessage]);
     } catch (err) {
       console.error(`Queued broadcast batch ${batchIndex} send failed:`, err);
       // 送信失敗: ロック解除 + offsetを保存して次のCronで再開
