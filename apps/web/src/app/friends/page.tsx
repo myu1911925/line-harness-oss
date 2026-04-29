@@ -44,6 +44,7 @@ export default function FriendsPage() {
   const [error, setError] = useState('')
   const [dailyStats, setDailyStats] = useState<Array<{ date: string; follows: number; unfollows: number }>>([])
   const [statsLoading, setStatsLoading] = useState(true)
+  const [totalFriendCount, setTotalFriendCount] = useState(0)
 
   const loadTags = useCallback(async () => {
     try {
@@ -98,9 +99,13 @@ export default function FriendsPage() {
 
   useEffect(() => {
     setStatsLoading(true)
-    api.friends.dailyStats({ accountId: selectedAccountId ?? undefined, days: 7 })
-      .then(res => { if (res.success) setDailyStats(res.data) })
-      .finally(() => setStatsLoading(false))
+    Promise.all([
+      api.friends.dailyStats({ accountId: selectedAccountId ?? undefined, days: 7 }),
+      api.friends.count({ accountId: selectedAccountId ?? undefined }),
+    ]).then(([statsRes, countRes]) => {
+      if (statsRes.success) setDailyStats(statsRes.data)
+      if (countRes.success) setTotalFriendCount(countRes.data.count)
+    }).finally(() => setStatsLoading(false))
   }, [selectedAccountId])
 
   useEffect(() => {
@@ -122,10 +127,7 @@ export default function FriendsPage() {
       {/* Daily Stats */}
       {!statsLoading && dailyStats.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">直近7日間の増減</h3>
-            <span className="text-sm text-gray-500">現在の友だち総数: <span className="font-semibold text-gray-800">{total.toLocaleString('ja-JP')}人</span></span>
-          </div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">直近7日間の増減</h3>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-500 text-xs border-b">
@@ -133,22 +135,31 @@ export default function FriendsPage() {
                 <th className="text-right pb-2 text-green-600">追加</th>
                 <th className="text-right pb-2 text-red-500">ブロック</th>
                 <th className="text-right pb-2 text-gray-600">純増</th>
+                <th className="text-right pb-2 text-gray-600">友だち総数</th>
               </tr>
             </thead>
             <tbody>
-              {dailyStats.map(row => {
-                const net = row.follows - row.unfollows
-                return (
-                  <tr key={row.date} className="border-b border-gray-100">
-                    <td className="py-1.5 text-gray-700">{row.date}</td>
-                    <td className="py-1.5 text-right text-green-600">+{row.follows}</td>
-                    <td className="py-1.5 text-right text-red-500">-{row.unfollows}</td>
-                    <td className={`py-1.5 text-right font-medium ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {net >= 0 ? '+' : ''}{net}
-                    </td>
-                  </tr>
-                )
-              })}
+              {(() => {
+                let running = totalFriendCount
+                return dailyStats.map(row => {
+                  const net = row.follows - row.unfollows
+                  const dayTotal = running
+                  running -= net
+                  return (
+                    <tr key={row.date} className="border-b border-gray-100">
+                      <td className="py-1.5 text-gray-700">{row.date}</td>
+                      <td className="py-1.5 text-right text-green-600">+{row.follows}</td>
+                      <td className="py-1.5 text-right text-red-500">-{row.unfollows}</td>
+                      <td className={`py-1.5 text-right font-medium ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {net >= 0 ? '+' : ''}{net}
+                      </td>
+                      <td className="py-1.5 text-right text-gray-700 font-medium">
+                        {dayTotal.toLocaleString('ja-JP')}人
+                      </td>
+                    </tr>
+                  )
+                })
+              })()}
             </tbody>
           </table>
         </div>
