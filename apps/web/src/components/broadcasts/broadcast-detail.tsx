@@ -165,7 +165,7 @@ export default function BroadcastDetail({ broadcastId }: BroadcastDetailProps) {
                 : '',
               sendNow: !broadcast.scheduledAt,
             }}
-            onSuccess={() => { setEditing(false); load() }}
+            onSuccess={() => { setEditing(false); load(); router.push('/broadcasts') }}
             onCancel={() => setEditing(false)}
           />
         </div>
