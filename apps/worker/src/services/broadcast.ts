@@ -341,7 +341,7 @@ export function buildMessage(messageType: string, messageContent: string, altTex
     }
   }
 
-  if (messageType === 'flex') {
+  if (messageType === 'flex' || messageType === 'carousel') {
     try {
       const contents = JSON.parse(messageContent);
       return { type: 'flex', altText: altText || extractFlexAltText(contents), contents };

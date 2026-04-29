@@ -370,7 +370,7 @@ export function buildMessage(messageType: string, messageContent: string, altTex
     }
   }
 
-  if (messageType === 'flex') {
+  if (messageType === 'flex' || messageType === 'carousel') {
     try {
       const contents = JSON.parse(messageContent);
       // Remove empty text nodes (from {{#if_ref}} conditional blocks)
